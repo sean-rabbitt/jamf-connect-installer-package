@@ -21,7 +21,7 @@ also be used with a standard policy in Jamf Pro to install the latest version of
 		login screen or still inside Setup Assistant.  In that case, force the login
 		window to reload - perfect for slow network connections and zero touch configuration.
 
-How it is used:
+# How it is used:
 
 Create a package with Jamf Composer (or similar application).  You can include any sort of extras
 in the package like background images, branding logos, RunScript files, etc.
@@ -35,7 +35,7 @@ Notify mechanism to show users what you're doing to the user's machine before dr
 them into Finder, or use the RunScript mechanism to call Jamf Pro policies for a zero touch
 configuration.
 
-What is included:
+# What is included:
 
 postinstaller.sh - Use this script as the postinstaller script
 jamf_dep.sh - A sample script used with the RunScript mechanism and the Notify mechanism to
