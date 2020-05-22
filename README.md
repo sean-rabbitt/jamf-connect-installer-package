@@ -5,19 +5,19 @@ Note: While this installer is designed to facilitate prestage enrollment package
 also be used with a standard policy in Jamf Pro to install the latest version of Connect.
 
 # What does it do:
-#	Download latest version of Jamf Connect from the public latest version URL
-#	Convert the DMG to a CDR to get rid of the license prompt
-#	Get the latest version numbers from the file names in the DMG
-#	If installer file name contains the word "Okta" in any combo of upper/lower case,
-#		Install Jamf Connect Login, Jamf Connect Sync, run an auth changer to enable
-#		Okta version of Login AND RunScript AND Notify mechanism
-#	If installer file name contains the word "Google" in any combo of upper/lower case,
-#		Install Jamf Connect Login, run authchanger to enable OIDC / RunScript / Notify
-#	Else, Install Jamf Connect Login, Jamf Connect Verify, run Authchanger to enable
-#		OIDC / RunScript / Notify
-#	Unmount CDR
-#	Delete downloaded tmp files
-#	If the currently logged in user is _mbsetupuser OR root, that means we're at the 
+	Download latest version of Jamf Connect from the public latest version URL
+	Convert the DMG to a CDR to get rid of the license prompt
+	Get the latest version numbers from the file names in the DMG
+	If installer file name contains the word "Okta" in any combo of upper/lower case,
+		Install Jamf Connect Login, Jamf Connect Sync, run an auth changer to enable
+		Okta version of Login AND RunScript AND Notify mechanism
+	If installer file name contains the word "Google" in any combo of upper/lower case,
+		Install Jamf Connect Login, run authchanger to enable OIDC / RunScript / Notify
+	Else, Install Jamf Connect Login, Jamf Connect Verify, run Authchanger to enable
+		OIDC / RunScript / Notify
+	Unmount CDR
+	Delete downloaded tmp files
+	If the currently logged in user is _mbsetupuser OR root, that means we're at the 
 		login screen or still inside Setup Assistant.  In that case, force the login
 		window to reload - perfect for slow network connections and zero touch configuration.
 
