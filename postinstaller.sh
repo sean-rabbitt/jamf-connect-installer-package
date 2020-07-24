@@ -51,7 +51,7 @@ TMP_PATH=/private/tmp
 JamfConnectVOLUME=/Volumes/JamfConnect
 
 TARGET_MOUNT=$3
-if [ -z $TARGET_MOUNT]; then 
+if [ -z "$TARGET_MOUNT" ]; then 
 	TARGET_MOUNT="/"
 fi 
 
@@ -77,7 +77,7 @@ VERIFY_FILENAME=$(echo "$JamfConnectVOLUME/Jamf Connect Verify/$VERIFY_FILENAME"
 cd ~
 
 # Install Login
-/usr/sbin/installer -pkg "$LOGIN_FILENAME" -target $TARGET_MOUNT
+/usr/sbin/installer -pkg "$LOGIN_FILENAME" -target "$TARGET_MOUNT"
 
 #####################################################################
 ### CHECK PACKAGE NAME - see if the .pkg file has been renamed to include "okta" or "google"
@@ -95,7 +95,7 @@ shopt -s nocasematch # OPTIONAL
 # combo of upper or lower case, follow Okta workflow.
 if [[ $1 == *"okta"* ]]; then 
 	/usr/bin/logger "Enabling Okta"
-	/usr/sbin/installer -pkg "$SYNC_FILENAME" -target $TARGET_MOUNT
+	/usr/sbin/installer -pkg "$SYNC_FILENAME" -target "$TARGET_MOUNT"
 
 	# Authchanger commands are documented at 
 	# https://docs.jamf.com/jamf-connect/administrator-guide/authchanger.html
@@ -117,7 +117,7 @@ if [[ $1 == *"okta"* ]]; then
 	/usr/local/bin/authchanger -reset -Okta
 	
 ### GOOGLE
-else if [[ $1 == *"google"* ]]; then 
+elif [[ $1 == *"google"* ]]; then 
 	/usr/bin/logger "Detected Google only.  Skipping install of Verify."
 
 	# In this example, we:
@@ -140,7 +140,7 @@ else if [[ $1 == *"google"* ]]; then
 else
 	/usr/bin/logger "Enabling OIDC"
 	/usr/bin/logger "Adding the default right to the authorization db"
-	/usr/sbin/installer -pkg "$VERIFY_FILENAME" -target $TARGET_MOUNT
+	/usr/sbin/installer -pkg "$VERIFY_FILENAME" -target "$TARGET_MOUNT"
 	
 	# In this example, we:
 				# Reset the authchanger database with the -reset flag
@@ -174,7 +174,7 @@ fi
 loggedinuser=$(/bin/ls -l /dev/console | /usr/bin/awk '{ print $3 }')
 
 # If the current logged in user is _mbsetupuser or if we're root, we must still be in Setup Assistant
-if [ $loggedinuser == "_mbsetupuser" ] || [ $loggedinuser == "root" ]; 
+if [ "$loggedinuser" == "_mbsetupuser" ] || [ "$loggedinuser" == "root" ]; 
 	then
 	# Once we're sure that Jamf Connect is fully installed, kill the loginwindow
 	# process to trigger Jamf Connect Login to appear
@@ -182,7 +182,7 @@ if [ $loggedinuser == "_mbsetupuser" ] || [ $loggedinuser == "root" ];
 fi
 
 # Unmount JamfConnect Volume
-/usr/bin/hdiutil detach $JamfConnectVOLUME
+/usr/bin/hdiutil detach "$JamfConnectVOLUME"
 
 # Remove the downloaded vendor supplied DMG file
 rm -f "$TMP_PATH"/"$VendorDMG"
