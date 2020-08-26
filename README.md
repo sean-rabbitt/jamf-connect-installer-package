@@ -1,6 +1,8 @@
 # jamf-connect-prestage-package
 A postinstaller script method of installing the latest version of Jamf Connect Login and appropriate matching Verify or Sync
 
+BETA NOTE: This script is not compatible with the current beta of Jamf Connect 2.0.
+
 Note: While this installer is designed to facilitate prestage enrollment packages, it can 
 also be used with a standard policy in Jamf Pro to install the latest version of Connect.
 
