@@ -2,42 +2,51 @@
 
 # Generic Jamf Connect Prestage Enrollment installer package
 # — SRABBITT May 22, 2020 12:52 PM
+# Version 2 installer updated on September 29, 2020
 
 # What does it do:
 #	Download latest version of Jamf Connect from the public latest version URL
 #	Convert the DMG to a CDR to get rid of the license prompt
-#	Get the latest version numbers from the file names in the DMG
-#	If installer file name contains the word "Okta" in any combo of upper/lower case,
-#		Install Jamf Connect Login, Jamf Connect Sync, run an auth changer to enable
-#		Okta version of Login AND RunScript AND Notify mechanism
-#	If installer file name contains the word "Google" in any combo of upper/lower case,
-#		Install Jamf Connect Login, run authchanger to enable OIDC / RunScript / Notify
-#	Else, Install Jamf Connect Login, Jamf Connect Verify, run Authchanger to enable
-#		OIDC / RunScript / Notify
+# 	Installs Jamf Connect
+# 	Optional - code you can comment on to install the launch agent for the menu bar agent
+#	Note - Don't install the launch agent with Google.  There's no ROPG from Google
+# 		as defined in the OpenID spec, so there's no ongoing password sync with the menu bar
 #	Unmount CDR
 #	Delete downloaded tmp files
-	
-	# MIT License
-	#
-	# Copyright (c) 2020 Jamf Software
 
-	# Permission is hereby granted, free of charge, to any person obtaining a copy
-	# of this software and associated documentation files (the "Software"), to deal
-	# in the Software without restriction, including without limitation the rights
-	# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	# copies of the Software, and to permit persons to whom the Software is
-	# furnished to do so, subject to the following conditions:
-	#
-	# The above copyright notice and this permission notice shall be included in all
-	# copies or substantial portions of the Software.
-	#
-	# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	# SOFTWARE.
+# HOW TO USE:
+# 	Make an installer .pkg file and include this as postinstaller script
+#	In the installer package, you can include things like branding images, 
+#	backgrounds, logos, help files for users, etc.  The script here downloads 
+#	Jamf Connect and installs it.
+#
+#	AUTHCHANGER NOTES: I took out the authchanger command because you should be
+#	pushing your com.jamf.connect.login and com.jamf.connect configuration profiles
+#	BEFORE installing this package.  See https://docs.jamf.com/jamf-connect/administrator-guide/authchanger.html
+#	for all the deets on that.  You could, of course, also manually toss in some 
+#	authchanger commands at the bottom of this for the lols.
+	
+# MIT License
+#
+# Copyright (c) 2020 Jamf Software
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 	
 
 # Vendor supplied DMG file
@@ -48,8 +57,22 @@ VendorCDR="JamfConnect.cdr"
 TMP_PATH=/private/tmp
 
 # Jamf Connect Mounted Volume Name
+# If you wanted to get fancy and add code here to find out what the volume 
+# 	mount point is automagically, go crazy baby.  Open source means change it up.
 JamfConnectVOLUME=/Volumes/JamfConnect
 
+# Jamf Connect installer package name as found in the DMG
+INSTALLER_FILENAME="JamfConnect.pkg"
+
+# Launch Agent installer package name as found in the DMG
+LAUNCHAGENT_FILENAME="JamfConnectLaunchAgent.pkg"
+
+# Change installer filename to include full path
+INSTALLER_FILENAME=$(echo "$JamfConnectVOLUME/$INSTALLER_FILENAME")
+# Change lauchagent filename to include full path
+LAUNCHAGENT_FILENAME=$(echo "$JamfConnectVOLUME/Resources/$LAUNCHAGENT_FILENAME")
+
+# If we're coming in from Jamf Pro, we should have been passed a target mount point.  Otherwise, assume root directory is target drive
 TARGET_MOUNT=$3
 if [ -z "$TARGET_MOUNT" ]; then 
 	TARGET_MOUNT="/"
@@ -64,102 +87,16 @@ fi
 # Mount vendor supplied DMG File
 /usr/bin/hdiutil attach "$TMP_PATH"/"$VendorCDR" -nobrowse -quiet
 
-# Get the names and paths of the current installers
-cd "$JamfConnectVOLUME""/Jamf Connect Login/"
-LOGIN_FILENAME=$(ls JamfConnectLogin*)
-LOGIN_FILENAME=$(echo "$JamfConnectVOLUME/Jamf Connect Login/$LOGIN_FILENAME")
-cd "$JamfConnectVOLUME""/Jamf Connect Sync/"
-SYNC_FILENAME=$(ls JamfConnectSync*)
-SYNC_FILENAME=$(echo "$JamfConnectVOLUME/Jamf Connect Sync/$SYNC_FILENAME")
-cd "$JamfConnectVOLUME""/Jamf Connect Verify/"
-VERIFY_FILENAME=$(ls JamfConnectVerify*)
-VERIFY_FILENAME=$(echo "$JamfConnectVOLUME/Jamf Connect Verify/$VERIFY_FILENAME")
-cd ~
+# Install Jamf Connect
+/usr/sbin/installer -pkg "$INSTALLER_FILENAME" -target "$TARGET_MOUNT"
 
-# Install Login
-/usr/sbin/installer -pkg "$LOGIN_FILENAME" -target "$TARGET_MOUNT"
+# Install the launch agent
+#### GOOGLE USERS #### COMMENT THIS NEXT LINE OUT.
+/usr/sbin/installer -pkg "$LAUNCHAGENT_FILENAME" -target "$TARGET_MOUNT"
 
-#####################################################################
-### CHECK PACKAGE NAME - see if the .pkg file has been renamed to include "okta" or "google"
-### "okta" - If found, install Jamf Connect Login and Jamf Connect Sync
-### "google" - If found, install ONLY Jamf Connect Login
-### otherwise, assume we're installing for OIDC (Azure, ADFS, OneLogin, IBM, Ping, etc)
-###		and install Jamf Connect Login and Jamf Connect Verify
-#####################################################################
-
-# Set the shell option for case insensitive
-shopt -s nocasematch # OPTIONAL
-
-### OKTA
-# See if we're doing OIDC or Okta.  If package name contains "okta" in any
-# combo of upper or lower case, follow Okta workflow.
-if [[ $1 == *"okta"* ]]; then 
-	/usr/bin/logger "Enabling Okta"
-	/usr/sbin/installer -pkg "$SYNC_FILENAME" -target "$TARGET_MOUNT"
-
-	# Authchanger commands are documented at 
-	# https://docs.jamf.com/jamf-connect/administrator-guide/authchanger.html
-
-	# In this example, we:
-		# Reset the authchanger database with the -reset flag
-		# Activate the Okta login mechanism with -Okta
-		# Activate the Plugin Authentication Module (PAM) with -DefaultJCRight
-		# Then, after the user has authenticated (-preAuth)
-			# Show a EULA (JamfConnectLogin:EULA)
-			# Run a script (JamfConnectLogin:RunScript,privileged) which can 
-				# be used for calling Jamf Pro custom triggers 
-				# and make changes to the messages in the Notify mech 
-			# Activate the Notify mechanism (JamfConnectLogin:Notify)
-
-	# /usr/local/bin/authchanger -reset -Okta -DefaultJCRight -preAuth JamfConnectLogin:EULA JamfConnectLogin:RunScript,privileged JamfConnectLogin:Notify
-	
-	# Default behavior of the Jamf Connect installer package is to only enable the IDP
-	/usr/local/bin/authchanger -reset -Okta
-	
-### GOOGLE
-elif [[ $1 == *"google"* ]]; then 
-	/usr/bin/logger "Detected Google only.  Skipping install of Verify."
-
-	# In this example, we:
-			# Reset the authchanger database with the -reset flag
-			# Activate the OIDC login mechanism with -OIDC
-			# Activate the Plugin Authentication Module (PAM) with -DefaultJCRight
-			# Then, after the user has authenticated (-preAuth)
-				# Show a EULA (JamfConnectLogin:EULA)
-				# Run a script (JamfConnectLogin:RunScript,privileged) which can 
-					# be used for calling Jamf Pro custom triggers 
-					# and make changes to the messages in the Notify mech 
-				# Activate the Notify mechanism (JamfConnectLogin:Notify)
-
-		# /usr/local/bin/authchanger -reset -OIDC -DefaultJCRight -preAuth JamfConnectLogin:EULA JamfConnectLogin:RunScript,privileged JamfConnectLogin:Notify
-		
-		# Default behavior of the Jamf Connect installer package is to only enable the IDP
-		/usr/local/bin/authchanger -reset -OIDC
-
-### ALL OTHER PROVIDERS
-else
-	/usr/bin/logger "Enabling OIDC"
-	/usr/bin/logger "Adding the default right to the authorization db"
-	/usr/sbin/installer -pkg "$VERIFY_FILENAME" -target "$TARGET_MOUNT"
-	
-	# In this example, we:
-				# Reset the authchanger database with the -reset flag
-				# Activate the OIDC login mechanism with -OIDC
-				# Activate the Plugin Authentication Module (PAM) with -DefaultJCRight
-				# Then, after the user has authenticated (-preAuth)
-					# Show a EULA (JamfConnectLogin:EULA)
-					# Run a script (JamfConnectLogin:RunScript,privileged) which can 
-						# be used for calling Jamf Pro custom triggers 
-						# and make changes to the messages in the Notify mech 
-					# Activate the Notify mechanism (JamfConnectLogin:Notify)
-
-	# /usr/local/bin/authchanger -reset -OIDC -DefaultJCRight -preAuth JamfConnectLogin:EULA JamfConnectLogin:RunScript,privileged JamfConnectLogin:Notify
-
-	# Default behavior of the Jamf Connect installer package is to only enable the IDP
-	/usr/local/bin/authchanger -reset -OIDC
-
-fi
-fi
+# AUTHCHANGER FOR THE LOLS?
+# This is where you would put your authchanger command.
+# /usr/local/bin/authchanger -reset -JamfConnect
 
 #####################################################################
 # For zero touch enrollment only!  If an enrollment computer is on a slow
