@@ -3,6 +3,7 @@
 # Generic Jamf Connect Prestage Enrollment installer package
 # — SRABBITT May 22, 2020 12:52 PM
 # Version 2 installer updated on September 29, 2020
+# Updated 20NOV2020 - Added wait for .AppleSetupDone to see if we can make Big Sur happier.
 
 # What does it do:
 #	Download latest version of Jamf Connect from the public latest version URL
@@ -96,6 +97,8 @@ fi
 
 # AUTHCHANGER FOR THE LOLS?
 # This is where you would put your authchanger command.
+# But you really should be using a config profile scoped to com.jamf.connect.authchanger
+# See https://docs.jamf.com/jamf-connect/administrator-guide/authchanger.html for details
 # /usr/local/bin/authchanger -reset -JamfConnect
 
 #####################################################################
@@ -106,6 +109,12 @@ fi
 # process while a user is actually using the computer, they will be unceremoniously
 # kicked out of their current session.
 #####################################################################
+
+# For macOS Big Sur - Wait until they've decided that Apple Setup is Done.
+
+while [ ! -f "/var/db/.AppleSetupDone" ]; do
+	sleep 2
+done
 
 # Determine who is the current user
 loggedinuser=$(/bin/ls -l /dev/console | /usr/bin/awk '{ print $3 }')
