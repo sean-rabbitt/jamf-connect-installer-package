@@ -4,6 +4,9 @@
 # — SRABBITT May 22, 2020 12:52 PM
 # Version 2 installer updated on September 29, 2020
 # Updated 20NOV2020 - Added wait for .AppleSetupDone to see if we can make Big Sur happier.
+# Updated 29JAN2021 - Changed the process to kill the login window based on if Setup Assistant
+#	is still running and who the current console user is.  Code provided care of Richard Purves
+#	with many thanks.
 
 # What does it do:
 #	Download latest version of Jamf Connect from the public latest version URL
@@ -100,6 +103,14 @@ fi
 # But you really should be using a config profile scoped to com.jamf.connect.authchanger
 # See https://docs.jamf.com/jamf-connect/administrator-guide/authchanger.html for details
 # /usr/local/bin/authchanger -reset -JamfConnect
+# See that line right here? ^^^^ Don't do this.
+
+# Unmount JamfConnect Volume
+/usr/bin/hdiutil detach "$JamfConnectVOLUME"
+
+# Remove the downloaded vendor supplied DMG file
+rm -f "$TMP_PATH"/"$VendorDMG"
+rm -f "$TMP_PATH"/"$VendorCDR"
 
 #####################################################################
 # For zero touch enrollment only!  If an enrollment computer is on a slow
@@ -116,22 +127,24 @@ while [ ! -f "/var/db/.AppleSetupDone" ]; do
 	sleep 2
 done
 
-# Determine who is the current user
-loggedinuser=$(/bin/ls -l /dev/console | /usr/bin/awk '{ print $3 }')
+# Now we need to ensure Jamf Connect is running properly.
+# Conditions are:
+# 1) User initiated enrollments are not summarily logged out before the enforced restart
+# 2) Devices that are still running the setup assistant are simply exited at this point
+# 3) If setup assistant is NOT running, then we kickstart loginwindow to force a Jamf Connect load.
+# Phew.
 
-# If the current logged in user is _mbsetupuser or if we're root, we must still be in Setup Assistant
-if [ "$loggedinuser" == "_mbsetupuser" ] || [ "$loggedinuser" == "root" ]; 
+# Look for a user
+loggedinuser=$( /usr/sbin/scutil <<< "show State:/Users/ConsoleUser" | /usr/bin/awk -F': ' '/[[:space:]]+Name[[:space:]]:/ { if ( $2 != "loginwindow" ) { print $2 }}' )
+	
+# If loginwindow, setup assistant or no user, then we're in a automated device enrollment environment.
+if [[ "$loggedinuser" == "loginwindow" ]] || [[ "$loggedinuser" == "_mbsetupuser" ]] || [[ "$loggedinuser" == "root" ]] || [[ -z "$loggedinuser" ]];
 	then
-	# Once we're sure that Jamf Connect is fully installed, kill the loginwindow
-	# process to trigger Jamf Connect Login to appear
-	/usr/bin/killall -9 loginwindow
-fi
-
-# Unmount JamfConnect Volume
-/usr/bin/hdiutil detach "$JamfConnectVOLUME"
-
-# Remove the downloaded vendor supplied DMG file
-rm -f "$TMP_PATH"/"$VendorDMG"
-rm -f "$TMP_PATH"/"$VendorCDR"
-
+		# Now check to see if Setup Assistant is a running process.  
+		# If Setup Assistant is running, we're not at the login screen yet. Exit and let macOS finish setup assistant and display the new Jamf Connect login screen.
+		[[ $( /usr/bin/pgrep "Setup Assistant" ) ]] && exit 0
+		
+		# Otherwise, kill the login window so it reloads and shows the Jamf Connect login window instead.
+		/usr/bin/killall -9 loginwindow
+	fi
 exit 0
